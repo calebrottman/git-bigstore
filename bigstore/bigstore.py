@@ -179,7 +179,9 @@ def pathnames():
 
     for wildcard, filter in filters:
         for filename, sha in filenames.iteritems():
-            if fnmatch.fnmatch(filename, wildcard):
+            full_filename = os.path.join(os.getcwd(), filename)
+            rel_filename = os.path.relpath(full_filename, toplevel_dir)
+            if fnmatch.fnmatch(rel_filename, wildcard):
                 yield sha, filename, filter == "bigstore-compress"
 
 
@@ -306,8 +308,13 @@ def pull():
                         firstline, hash_function_name, hexdigest = g().show(sha).split('\n')
                         if firstline == 'bigstore':
                             try:
+                                # make sure we don't still have a bigstore file
                                 with open(object_filename(hash_function_name, hexdigest)):
-                                    pass
+                                    if os.stat(filename).st_size < 250:  # should easily cover biggest bigstore file
+                                        with open(filename, 'r') as f:
+                                            if f.readline() == "bigstore\n":  # check if still bigstore file
+                                                shutil.copyfile(object_filename(default_hash_function_name, hexdigest), filename)
+                                                g().add(filename)
                             except IOError:
                                 backend = backend_for_name(backend_name)
                                 if backend.exists(hexdigest):
