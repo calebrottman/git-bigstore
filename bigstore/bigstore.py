@@ -248,22 +248,25 @@ def push():
                 else:
                     if firstline == 'bigstore':
                         if not backend.exists(hexdigest):
-                            with open(object_filename(hash_function_name, hexdigest)) as file:
-                                if compress:
-                                    with tempfile.TemporaryFile() as compressed_file:
-                                        compressor = bz2.BZ2Compressor()
-                                        for line in file:
-                                            compressed_file.write(compressor.compress(line))
+                            try:
+                                with open(object_filename(hash_function_name, hexdigest)) as file:
+                                    if compress:
+                                        with tempfile.TemporaryFile() as compressed_file:
+                                            compressor = bz2.BZ2Compressor()
+                                            for line in file:
+                                                compressed_file.write(compressor.compress(line))
 
-                                        compressed_file.write(compressor.flush())
-                                        compressed_file.seek(0)
+                                            compressed_file.write(compressor.flush())
+                                            compressed_file.seek(0)
 
-                                        sys.stderr.write("compressed!\n")
-                                        backend.push(compressed_file, hexdigest, cb=ProgressPercentage(filename))
-                                else:
-                                    backend.push(file, hexdigest, cb=ProgressPercentage(filename))
-
-                            sys.stderr.write("\n")
+                                            sys.stderr.write("compressed!\n")
+                                            backend.push(compressed_file, hexdigest, cb=ProgressPercentage(filename))
+                                    else:
+                                        backend.push(file, hexdigest, cb=ProgressPercentage(filename))
+                                sys.stderr.write("\n")
+                            except IOError:
+                                # pass  # file has never been bigstore pushed
+                                print "Warning: no data found for file: '{}'".format(filename)
 
                         user_name = g().config("user.name")
                         user_email = g().config("user.email")
